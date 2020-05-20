@@ -1,0 +1,50 @@
+/*********************/
+/* Header
+/*********************/
+@media screen and (min-width: 600px) {
+    header {
+        display: block;
+        background-color: #0a3d62cc;
+        position: fixed;
+        top: 0;
+        left: 0;
+        padding: 0 20px;
+        color: #fff;
+        width: 100vw;
+    }
+
+    .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: auto;
+        max-width: 1024px;
+    }
+    
+    .header h1 {
+        text-transform: uppercase;
+        font-size: 4rem;
+        font-weight: 200;
+        margin: 10px 0; 
+        text-shadow: 0px 2px 5px #151616;
+    }
+}
+
+/*********************/
+/* Content
+/*********************/
+@media screen and (min-width: 600px) {
+    main {
+        padding-top: 110px;
+    }
+
+    .create-task-btn_mobile {
+        display: none;
+    }
+}
+
+@media screen and (min-width: 768px) {
+    .task-list {
+        width: 75%;
+    }
+}
