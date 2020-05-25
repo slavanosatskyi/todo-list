@@ -6,10 +6,10 @@ createButtons.forEach(function (btn) {
   btn.addEventListener("click", function (e) {
     hideMessagePanel();
     const taskList = document.querySelector("#task-list");
-    const newTask = createTask();
-    taskList.append(newTask);
+    const newTaskItem = createTaskItem();
+    taskList.append(newTaskItem);
     // Set focus on the created task
-    newTask.querySelector("input[type='text']").focus();
+    newTaskItem.querySelector("input[type='text']").focus();
   });
 });
 
@@ -20,7 +20,7 @@ function hideMessagePanel() {
   }
 }
 
-function createTask() {
+function createTaskItem() {
   const task = document.createElement("li");
   task.classList.add("task-list__item");
 

@@ -1,4 +1,4 @@
-const PORT = process.env.PORT || 3000
+const PORT = process.env.PORT || 3000;
 
 const express = require("express");
 const app = express();
@@ -11,5 +11,5 @@ app.get("/", function(req, res) {
 });
 
 app.listen(PORT, function () {
-  console.log("Server is running...");
+  console.log(`Server is running on PORT=${PORT}`);
 });
