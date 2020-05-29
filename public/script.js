@@ -1,45 +1,83 @@
 let timerId = null;
 let preventClick = false;
 
+const editTaskEvent = new Event("editTask", { bubbles: true });
+
 const tasksList = JSON.parse(localStorage.getItem("tasks")) || [];
-tasksList.forEach(function (task) {
-  createTaskItem(task);
-});
-console.log(tasksList);
+if (tasksList.length === 0) {
+  setMessagePanelVisibility(true);
+}
 
 const taskListItem = document.querySelector("#task-list");
-taskListItem.addEventListener("click", function (e) {
-  if (e.target.classList.contains("task-content")) {
-    toggleTask(e.target.parentElement);
-  }
+invalidateTaskListItem(tasksList, taskListItem);
 
-  if (e.target.classList.contains("fa-trash")) {
-    deleteTask(e.target.parentElement.parentElement);
-  }
+taskListItem.addEventListener("click", function (e) {
+  Array.from(this.children).forEach(function (elem, i) {
+    if (elem.querySelector(".task-content") === e.target) {
+      if (preventClick) {
+        return;
+      }
+
+      timerId = setTimeout(function () {
+        toggleTask(i);
+        e.target.classList.toggle("done");
+        e.target.blur();
+        preventClick = false;
+        invalidateLocalStorage(tasksList);
+      }, 200);
+
+      preventClick = true;
+    }
+
+    if (elem.querySelector(".fa-trash") === e.target) {
+      deleteTask(i);
+      e.target.parentElement.parentElement.remove();
+      invalidateLocalStorage(tasksList);
+      setMessagePanelVisibility(tasksList.length === 0);
+    }
+  });
 });
 
 taskListItem.addEventListener("dblclick", function (e) {
-  if (e.target.classList.contains("task-content")) {
-    editTask(e.target.parentElement);
-  }
+  Array.from(this.children).forEach(function (elem, i) {
+    if (elem.querySelector(".task-content") === e.target) {
+      clearTimeout(timerId);
+      preventClick = false;
+      e.target.readOnly = false;
+      e.target.focus();
+      e.target.classList.remove("done");
+    }
+  });
+});
+
+taskListItem.addEventListener("focusout", function (e) {
+  Array.from(this.children).forEach(function (elem, i) {
+    if (elem.querySelector(".task-content") === e.target) {
+      tasksList[i] = {
+        value: e.target.value,
+        isDone: e.target.classList.contains("done"),
+      };
+      e.target.readOnly = true;
+    }
+  });
+
+  invalidateLocalStorage(tasksList);
 });
 
 const createButtons = document.querySelectorAll(".create-task-btn");
 createButtons.forEach(function (btn) {
   btn.addEventListener("click", function (e) {
-    createTaskItem({});
+    const task = createTaskItem({});
+    const input = task.querySelector(".task-content");
+    input.readOnly = false;
+    input.focus();
   });
 });
 
-function setMessagePanelVisibility(isVisible) {
-  const panel = document.querySelector("#message-panel");
-  if (isVisible) {
-    panel.classList.remove("hidden");
-  } else {
-    panel.classList.add("hidden");
-  }
-}
 
+//////////////////////////////////////////////////
+// Visual Elements Creation
+//////////////////////////////////////////////////
 function createTaskItem({ value = null, isDone = null }) {
   const task = document.createElement("li");
   task.classList.add("task-list__item");
@@ -51,36 +89,23 @@ function createTaskItem({ value = null, isDone = null }) {
   task.append(deleteTaskButton);
 
   setMessagePanelVisibility(false);
-  const taskListItem = document.querySelector("#task-list").append(task);
+  document.querySelector("#task-list").append(task);
 
-  if (value !== null && isDone !== null) {
+  if (value) {
     inputField.value = value;
-    if (isDone) {
-      inputField.classList.add("done");
-    }
-  } else {
-    // Set focus on the created task
-    task.querySelector("input[type='text']").focus();
   }
+  if (isDone) {
+    inputField.classList.add("done");
+  }
+
+  return task;
 }
 
 function createInput() {
   const inputField = document.createElement("input");
   inputField.type = "text";
   inputField.classList.add("task-content");
-  inputField.addEventListener("blur", function (e) {
-    if (this.previousValue && this.value.length === 0) {
-      this.value = this.previousValue;
-    } else if (this.value.length === 0) {
-      this.parentElement.remove();
-      return;
-    } else {
-      this.previousValue = this.value;
-    }
-
-    this.setAttribute("readonly", null);
-  });
-
+  inputField.readOnly = true;
   return inputField;
 }
 
@@ -91,43 +116,40 @@ function createDeleteTaskButton() {
   return deleteTaskButton;
 }
 
-function toggleTask(taskItem) {
-  // If prev click was done 200ms ago or current task is being edited now - skip click handling
-  const taskContent = taskItem.querySelector("input[type='text']");
-  if (
-    preventClick ||
-    (taskContent === document.activeElement &&
-      !taskContent.getAttribute("readonly"))
-  ) {
-    return;
+function invalidateTaskListItem(tasksList, taskListItem) {
+  taskListItem.innerHTML = "";
+  tasksList.forEach(function (task) {
+    createTaskItem(task);
+  });
+}
+
+//////////////////////////////////////////////////
+// Utils
+//////////////////////////////////////////////////
+function setMessagePanelVisibility(isVisible) {
+  const panel = document.querySelector("#message-panel");
+  if (isVisible) {
+    panel.classList.remove("hidden");
+  } else {
+    panel.classList.add("hidden");
   }
-
-  // Toggle task and reset "preventClick" after 200ms
-  timerId = setTimeout(() => {
-    taskContent.classList.toggle("done");
-    taskContent.blur();
-    preventClick = false;
-  }, 200);
-
-  // This is needed to avoid processing clicks during dblclick event
-  preventClick = true;
 }
 
-function editTask(taskItem) {
-  const taskContent = taskItem.querySelector("input[type='text']");
-
-  clearTimeout(timerId);
-  preventClick = false;
-  taskContent.classList.remove("done");
-  taskContent.removeAttribute("readonly");
-  taskContent.focus();
+//////////////////////////////////////////////////
+// Update data
+//////////////////////////////////////////////////
+function toggleTask(index) {
+  tasksList[index].isDone = !tasksList[index].isDone;
 }
 
-function deleteTask(taskItem) {
-  taskItem.remove();
+function deleteTask(index) {
+  tasksList.splice(index, 1);
 }
 
-function rewriteLocalStorage() {
+//////////////////////////////////////////////////
+// Save data
+//////////////////////////////////////////////////
+function invalidateLocalStorage(tasksList) {
   localStorage.clear();
-  localStorage.setItem("tasks", tasksList);
+  localStorage.setItem("tasks", JSON.stringify(tasksList));
 }
