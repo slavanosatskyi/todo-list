@@ -1,26 +1,46 @@
 let timerId = null;
 let preventClick = false;
 
+const tasksList = JSON.parse(localStorage.getItem("tasks")) || [];
+tasksList.forEach(function (task) {
+  createTaskItem(task);
+});
+console.log(tasksList);
+
+const taskListItem = document.querySelector("#task-list");
+taskListItem.addEventListener("click", function (e) {
+  if (e.target.classList.contains("task-content")) {
+    toggleTask(e.target.parentElement);
+  }
+
+  if (e.target.classList.contains("fa-trash")) {
+    deleteTask(e.target.parentElement.parentElement);
+  }
+});
+
+taskListItem.addEventListener("dblclick", function (e) {
+  if (e.target.classList.contains("task-content")) {
+    editTask(e.target.parentElement);
+  }
+});
+
 const createButtons = document.querySelectorAll(".create-task-btn");
 createButtons.forEach(function (btn) {
   btn.addEventListener("click", function (e) {
-    hideMessagePanel();
-    const taskList = document.querySelector("#task-list");
-    const newTaskItem = createTaskItem();
-    taskList.append(newTaskItem);
-    // Set focus on the created task
-    newTaskItem.querySelector("input[type='text']").focus();
+    createTaskItem({});
   });
 });
 
-function hideMessagePanel() {
+function setMessagePanelVisibility(isVisible) {
   const panel = document.querySelector("#message-panel");
-  if (panel.style.display !== "none") {
-    panel.style.display = "none";
+  if (isVisible) {
+    panel.classList.remove("hidden");
+  } else {
+    panel.classList.add("hidden");
   }
 }
 
-function createTaskItem() {
+function createTaskItem({ value = null, isDone = null }) {
   const task = document.createElement("li");
   task.classList.add("task-list__item");
 
@@ -30,46 +50,35 @@ function createTaskItem() {
   const deleteTaskButton = createDeleteTaskButton();
   task.append(deleteTaskButton);
 
-  return task;
+  setMessagePanelVisibility(false);
+  const taskListItem = document.querySelector("#task-list").append(task);
+
+  if (value !== null && isDone !== null) {
+    inputField.value = value;
+    if (isDone) {
+      inputField.classList.add("done");
+    }
+  } else {
+    // Set focus on the created task
+    task.querySelector("input[type='text']").focus();
+  }
 }
 
 function createInput() {
   const inputField = document.createElement("input");
   inputField.type = "text";
+  inputField.classList.add("task-content");
   inputField.addEventListener("blur", function (e) {
-    if (this.savedValue && this.value.length === 0) {
-      this.value = this.savedValue;
+    if (this.previousValue && this.value.length === 0) {
+      this.value = this.previousValue;
     } else if (this.value.length === 0) {
       this.parentElement.remove();
-    } else {
-      this.savedValue = this.value;
-    }
-    this.setAttribute("readonly", null);
-  });
-
-  inputField.addEventListener("click", function (e) {
-    if (
-      preventClick ||
-      (this === document.activeElement && !this.getAttribute("readonly"))
-    ) {
       return;
+    } else {
+      this.previousValue = this.value;
     }
 
-    timerId = setTimeout(() => {
-      this.classList.toggle("done");
-      this.blur();
-      preventClick = false;
-    }, 200);
-
-    preventClick = true;
-  });
-
-  inputField.addEventListener("dblclick", function (e) {
-    clearTimeout(timerId);
-    preventClick = false;
-    this.classList.remove("done");
-    this.removeAttribute("readonly");
-    this.focus();
+    this.setAttribute("readonly", null);
   });
 
   return inputField;
@@ -78,12 +87,47 @@ function createInput() {
 function createDeleteTaskButton() {
   const deleteTaskButton = document.createElement("button");
   deleteTaskButton.classList.add("delete-task-btn");
-  const trashIcon = document.createElement("i");
-  trashIcon.classList.add("fas", "fa-trash");
-  deleteTaskButton.append(trashIcon);
-  deleteTaskButton.addEventListener("click", function (e) {
-    this.parentElement.remove();
-  });
-
+  deleteTaskButton.innerHTML = "<i class='fas fa-trash'></i>";
   return deleteTaskButton;
+}
+
+function toggleTask(taskItem) {
+  // If prev click was done 200ms ago or current task is being edited now - skip click handling
+  const taskContent = taskItem.querySelector("input[type='text']");
+  if (
+    preventClick ||
+    (taskContent === document.activeElement &&
+      !taskContent.getAttribute("readonly"))
+  ) {
+    return;
+  }
+
+  // Toggle task and reset "preventClick" after 200ms
+  timerId = setTimeout(() => {
+    taskContent.classList.toggle("done");
+    taskContent.blur();
+    preventClick = false;
+  }, 200);
+
+  // This is needed to avoid processing clicks during dblclick event
+  preventClick = true;
+}
+
+function editTask(taskItem) {
+  const taskContent = taskItem.querySelector("input[type='text']");
+
+  clearTimeout(timerId);
+  preventClick = false;
+  taskContent.classList.remove("done");
+  taskContent.removeAttribute("readonly");
+  taskContent.focus();
+}
+
+function deleteTask(taskItem) {
+  taskItem.remove();
+}
+
+function rewriteLocalStorage() {
+  localStorage.clear();
+  localStorage.setItem("tasks", tasksList);
 }
